@@ -3,6 +3,9 @@ const Check = require("../models/Check");
 const webhookService = require("./webhookService");
 const websocketService = require("./websocketService");
 const logger = require("../utils/logger");
+const runtimeEnv = (process.env.NODE_ENV || "development").toLowerCase();
+const isDevEnv = runtimeEnv === "dev" || runtimeEnv === "development";
+const isProdEnv = runtimeEnv === "prod" || runtimeEnv === "production";
 
 function normalizeStatus(value) {
   if (typeof value !== "string") {
@@ -23,6 +26,9 @@ async function performCheck(urlDoc) {
   let errorMessage = null;
 
   try {
+    console.log(
+      `[HTTP_CHECK][REQUEST] method=GET url=${urlDoc.url} timeoutMs=5000 env=${runtimeEnv}`
+    );
     const response = await axios.get(urlDoc.url, {
       timeout: 5000,
       validateStatus: () => true,
@@ -31,10 +37,16 @@ async function performCheck(urlDoc) {
 
     responseTime = Date.now() - startedAt;
     status = response.status >= 200 && response.status <= 399 ? "up" : "down";
+    console.log(
+      `[HTTP_CHECK][RESPONSE] url=${urlDoc.url} statusCode=${response.status} computedStatus=${status} responseTimeMs=${responseTime}`
+    );
   } catch (error) {
     responseTime = Date.now() - startedAt;
     status = "down";
     errorMessage = error.code || error.message;
+    console.log(
+      `[HTTP_CHECK][ERROR] url=${urlDoc.url} computedStatus=${status} responseTimeMs=${responseTime} message=${errorMessage}`
+    );
   }
 
   const timestamp = new Date();
@@ -74,14 +86,16 @@ async function performCheck(urlDoc) {
   }
 
   const shouldSendWebhook =
-    status === "down" &&
     Boolean(urlDoc.webhookUrl) &&
-    (!previousCheck || previousCheck.status !== "down");
+    (isDevEnv || (isProdEnv && status === "down"));
 
   if (shouldSendWebhook) {
+    console.log(
+      `[WEBHOOK][TRIGGER] env=${runtimeEnv} url=${urlDoc.url} status=${status} webhookUrl=${urlDoc.webhookUrl}`
+    );
     await webhookService.sendDownAlert(urlDoc.webhookUrl, {
       url: urlDoc.url,
-      status: "down",
+      status,
       timestamp
     });
   }
