@@ -1,0 +1,25 @@
+{
+  "name": "uptime-monitor-api",
+  "version": "1.0.0",
+  "description": "Minimal production-ready real-time URL health monitoring API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "uptime",
+    "monitoring",
+    "express",
+    "mongodb",
+    "websocket"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.13.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "mongoose": "^8.19.1",
+    "ws": "^8.18.3"
+  }
+}
