@@ -1,7 +1,8 @@
 const state = {
   monitors: [],
   dashboard: null,
-  selectedStatus: null
+  selectedStatus: null,
+  isRefreshing: false
 };
 
 const elements = {
@@ -38,10 +39,11 @@ function statusClass(status) {
 }
 
 function formatResponseTime(value) {
-  if (typeof value !== "number" || Number.isNaN(value)) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
     return "-";
   }
-  return `${Math.round(value)}ms`;
+  return `${Math.round(numericValue)}ms`;
 }
 
 function animateNumber(element, nextValue, decimals = 0, suffix = "") {
@@ -388,11 +390,28 @@ function addEventLine(message) {
 }
 
 async function refreshAll() {
-  await Promise.all([loadMonitors(), loadDashboard()]);
-  renderSummary();
-  renderTrendCharts();
-  renderMonitorsTable();
-  renderSelectedStatus();
+  if (state.isRefreshing) {
+    return;
+  }
+
+  state.isRefreshing = true;
+  try {
+    await Promise.all([loadMonitors(), loadDashboard()]);
+    renderSummary();
+    renderTrendCharts();
+    renderMonitorsTable();
+    renderSelectedStatus();
+  } finally {
+    state.isRefreshing = false;
+  }
+}
+
+async function safeRefreshAll() {
+  try {
+    await refreshAll();
+  } catch (error) {
+    addEventLine(`Refresh failed: ${error.message}`);
+  }
 }
 
 async function createMonitor(event) {
@@ -522,7 +541,16 @@ function connectWebSocket() {
         const data = payload.data;
         const status = normalizeStatus(data.newStatus);
         addEventLine(`${data.url} changed to ${status.toUpperCase()}`);
-        await refreshAll();
+        await safeRefreshAll();
+        return;
+      }
+
+      if (payload.event === "check-completed") {
+        const data = payload.data || {};
+        const status = normalizeStatus(data.status);
+        const responseText = formatResponseTime(data.responseTime);
+        addEventLine(`Checked ${data.url || "URL"}: ${status.toUpperCase()} (${responseText})`);
+        await safeRefreshAll();
       }
     } catch (_error) {
       addEventLine("Received non-JSON WebSocket message");
@@ -561,9 +589,12 @@ function attachListeners() {
 async function bootstrap() {
   attachListeners();
   connectWebSocket();
+  window.setInterval(() => {
+    safeRefreshAll().catch(() => {});
+  }, 15000);
 
   try {
-    await refreshAll();
+    await safeRefreshAll();
   } catch (error) {
     addEventLine(`Initial load failed: ${error.message}`);
   }

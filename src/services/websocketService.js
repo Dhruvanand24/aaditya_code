@@ -19,15 +19,19 @@ class WebsocketService {
   }
 
   broadcastStatusChange(payload) {
+    this.broadcast("status-change", payload);
+  }
+
+  broadcastCheckCompleted(payload) {
+    this.broadcast("check-completed", payload);
+  }
+
+  broadcast(event, payload) {
     if (!this.wss) {
       return;
     }
 
-    const serialized = JSON.stringify({
-      event: "status-change",
-      data: payload
-    });
-
+    const serialized = JSON.stringify({ event, data: payload });
     this.wss.clients.forEach((client) => {
       if (client.readyState === 1) {
         client.send(serialized);

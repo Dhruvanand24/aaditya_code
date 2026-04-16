@@ -150,7 +150,14 @@ const getDashboard = asyncHandler(async (_req, res) => {
           }
         },
         lastCheckedTime: { $ifNull: ["$latestCheck.timestamp", null] },
-        latestResponseTime: { $ifNull: ["$latestCheck.responseTime", null] }
+        latestResponseTime: {
+          $convert: {
+            input: "$latestCheck.responseTime",
+            to: "double",
+            onError: null,
+            onNull: null
+          }
+        }
       }
     },
     {

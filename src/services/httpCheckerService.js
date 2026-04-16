@@ -4,6 +4,14 @@ const webhookService = require("./webhookService");
 const websocketService = require("./websocketService");
 const logger = require("../utils/logger");
 
+function normalizeStatus(value) {
+  if (typeof value !== "string") {
+    return "down";
+  }
+
+  return value.toLowerCase() === "up" ? "up" : "down";
+}
+
 async function performCheck(urlDoc) {
   const previousCheck = await Check.findOne({ urlId: urlDoc._id })
     .sort({ timestamp: -1 })
@@ -42,7 +50,19 @@ async function performCheck(urlDoc) {
     `Checked ${urlDoc.url} -> ${status.toUpperCase()} (${responseTime}ms)`
   );
 
-  const statusChanged = previousCheck && previousCheck.status !== status;
+  const previousStatus = normalizeStatus(
+    previousCheck && (Array.isArray(previousCheck.status) ? previousCheck.status[0] : previousCheck.status)
+  );
+  const statusChanged = Boolean(previousCheck) && previousStatus !== status;
+
+  websocketService.broadcastCheckCompleted({
+    urlId: urlDoc._id.toString(),
+    url: urlDoc.url,
+    status,
+    responseTime,
+    timestamp,
+    statusChanged
+  });
 
   if (statusChanged) {
     websocketService.broadcastStatusChange({
