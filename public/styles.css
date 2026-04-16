@@ -1,0 +1,167 @@
+:root {
+  color-scheme: light dark;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #0b1020;
+  color: #e6ecff;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  background: #151c33;
+  border: 1px solid #2a355c;
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+label {
+  display: block;
+  margin: 0.5rem 0 0.3rem;
+  font-size: 0.9rem;
+}
+
+input,
+button {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #344374;
+  padding: 0.55rem;
+  box-sizing: border-box;
+}
+
+button {
+  margin-top: 0.7rem;
+  cursor: pointer;
+  background: #4b7bec;
+  color: #fff;
+  border: none;
+}
+
+button:hover {
+  background: #3c67c4;
+}
+
+button.danger {
+  background: #de3f59;
+}
+
+button.danger:hover {
+  background: #b93147;
+}
+
+.summary-grid {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.metric {
+  flex: 1;
+  background: #1c2747;
+  border-radius: 8px;
+  padding: 0.8rem;
+  text-align: center;
+}
+
+.metric strong {
+  display: block;
+  font-size: 1.4rem;
+  margin-top: 0.3rem;
+}
+
+.metric.up strong {
+  color: #45d483;
+}
+
+.metric.down strong {
+  color: #ff6b7d;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.section-header button {
+  width: auto;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.6rem;
+  border-bottom: 1px solid #26345e;
+  vertical-align: top;
+}
+
+td.actions {
+  min-width: 180px;
+}
+
+td.actions button {
+  width: auto;
+  margin-right: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.status-up {
+  color: #45d483;
+  font-weight: 700;
+}
+
+.status-down {
+  color: #ff6b7d;
+  font-weight: 700;
+}
+
+#status-output {
+  background: #0f1730;
+  border: 1px solid #243460;
+  border-radius: 8px;
+  padding: 0.8rem;
+  overflow: auto;
+  margin: 0;
+}
+
+#events-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+#events-list li {
+  margin-bottom: 0.45rem;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

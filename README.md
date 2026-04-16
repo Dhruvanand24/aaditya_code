@@ -36,6 +36,10 @@ A minimal, production-ready, local-first backend for real-time URL health monito
   README.md
   dev-init.sh
   server.js
+  /public
+    index.html
+    app.js
+    styles.css
   /src
     app.js
     /config
@@ -107,6 +111,8 @@ npm start
    ```bash
    npm start
    ```
+4. Open frontend:
+   - [http://localhost:3000](http://localhost:3000)
 
 ## Environment Variables
 
@@ -139,6 +145,17 @@ NODE_ENV=development
   - Body can include any updatable fields from create payload.
 
 - `DELETE /urls/:id`
+
+## Frontend Dashboard
+
+The same Express server now serves a basic frontend from `public/`.
+
+- URL: [http://localhost:3000](http://localhost:3000)
+- Includes:
+  - Create monitor form
+  - Monitor table with actions (view status, set interval, delete)
+  - Dashboard counters (total/up/down)
+  - Live status change event feed via WebSocket
 
 ### Status & Dashboard
 

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Uptime Monitor Dashboard</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="container">
+      <h1>Uptime Monitor</h1>
+      <p>Minimal real-time URL health monitoring dashboard.</p>
+    </header>
+
+    <main class="container grid">
+      <section class="card">
+        <h2>Add Monitor</h2>
+        <form id="monitor-form">
+          <label for="url">URL *</label>
+          <input id="url" name="url" type="url" placeholder="https://example.com" required />
+
+          <label for="name">Name</label>
+          <input id="name" name="name" type="text" placeholder="Example Service" />
+
+          <label for="checkInterval">Check Interval (sec, min 10)</label>
+          <input id="checkInterval" name="checkInterval" type="number" min="10" value="60" />
+
+          <label for="webhookUrl">Webhook URL</label>
+          <input id="webhookUrl" name="webhookUrl" type="url" placeholder="http://localhost:4000/webhook" />
+
+          <button type="submit">Create Monitor</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Summary</h2>
+        <div class="summary-grid">
+          <div class="metric">
+            <span>Total</span>
+            <strong id="totalUrls">0</strong>
+          </div>
+          <div class="metric up">
+            <span>UP</span>
+            <strong id="upUrls">0</strong>
+          </div>
+          <div class="metric down">
+            <span>DOWN</span>
+            <strong id="downUrls">0</strong>
+          </div>
+        </div>
+        <button id="refresh-dashboard">Refresh Dashboard</button>
+      </section>
+
+      <section class="card full">
+        <div class="section-header">
+          <h2>Monitors</h2>
+          <button id="refresh-monitors">Refresh Monitors</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>URL</th>
+                <th>Interval</th>
+                <th>Status</th>
+                <th>Last Checked</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="monitors-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card full">
+        <h2>Selected Monitor Status</h2>
+        <pre id="status-output">Select "View Status" to load analytics.</pre>
+      </section>
+
+      <section class="card full">
+        <h2>Live Events</h2>
+        <ul id="events-list"></ul>
+      </section>
+    </main>
+
+    <template id="monitor-row-template">
+      <tr>
+        <td class="name"></td>
+        <td class="url"></td>
+        <td class="interval"></td>
+        <td class="status"></td>
+        <td class="last-checked"></td>
+        <td class="actions">
+          <button data-action="status">View Status</button>
+          <button data-action="interval">Set Interval</button>
+          <button data-action="delete" class="danger">Delete</button>
+        </td>
+      </tr>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
