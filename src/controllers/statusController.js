@@ -5,6 +5,19 @@ const AppError = require("../utils/AppError");
 const asyncHandler = require("../utils/asyncHandler");
 
 const FALLBACK_CHECK_WINDOW = 100;
+const DASHBOARD_TREND_HOURS = 24;
+const NORMALIZED_STATUS_EXPRESSION = {
+  $toLower: { $ifNull: [{ $toString: "$status" }, "down"] }
+};
+
+function normalizeStatusValue(rawStatus) {
+  if (typeof rawStatus !== "string") {
+    return "down";
+  }
+
+  const normalized = rawStatus.toLowerCase();
+  return normalized === "up" ? "up" : "down";
+}
 
 const getStatusByUrlId = asyncHandler(async (req, res) => {
   const { urlId } = req.params;
@@ -34,7 +47,7 @@ const getStatusByUrlId = asyncHandler(async (req, res) => {
         _id: null,
         totalChecks: { $sum: 1 },
         upChecks: {
-          $sum: { $cond: [{ $eq: ["$status", "up"] }, 1, 0] }
+          $sum: { $cond: [{ $eq: [NORMALIZED_STATUS_EXPRESSION, "up"] }, 1, 0] }
         },
         averageResponseTime: { $avg: "$responseTime" }
       }
@@ -52,7 +65,7 @@ const getStatusByUrlId = asyncHandler(async (req, res) => {
           _id: null,
           totalChecks: { $sum: 1 },
           upChecks: {
-            $sum: { $cond: [{ $eq: ["$status", "up"] }, 1, 0] }
+            $sum: { $cond: [{ $eq: [NORMALIZED_STATUS_EXPRESSION, "up"] }, 1, 0] }
           },
           averageResponseTime: { $avg: "$responseTime" }
         }
@@ -91,7 +104,7 @@ const getStatusByUrlId = asyncHandler(async (req, res) => {
 });
 
 const getDashboard = asyncHandler(async (_req, res) => {
-  const dashboardAgg = await Url.aggregate([
+  const monitoredUrls = await Url.aggregate([
     {
       $lookup: {
         from: "checks",
@@ -111,49 +124,144 @@ const getDashboard = asyncHandler(async (_req, res) => {
     {
       $addFields: {
         latestCheck: { $arrayElemAt: ["$latestCheck", 0] },
-        currentStatus: { $ifNull: ["$latestCheck.status", "down"] },
-        lastCheckedTime: { $ifNull: ["$latestCheck.timestamp", null] }
+        currentStatus: {
+          $ifNull: [{ $toLower: "$latestCheck.status" }, "down"]
+        },
+        lastCheckedTime: { $ifNull: ["$latestCheck.timestamp", null] },
+        latestResponseTime: { $ifNull: ["$latestCheck.responseTime", null] }
       }
     },
     {
-      $facet: {
-        summary: [
-          {
-            $group: {
-              _id: null,
-              totalUrls: { $sum: 1 },
-              upUrls: {
-                $sum: { $cond: [{ $eq: ["$currentStatus", "up"] }, 1, 0] }
-              },
-              downUrls: {
-                $sum: { $cond: [{ $eq: ["$currentStatus", "down"] }, 1, 0] }
-              }
-            }
-          }
-        ],
-        urls: [
-          {
-            $project: {
-              _id: 0,
-              urlId: "$_id",
-              url: 1,
-              name: 1,
-              currentStatus: 1,
-              lastCheckedTime: 1
-            }
-          },
-          { $sort: { url: 1 } }
-        ]
+      $project: {
+        _id: 0,
+        urlId: "$_id",
+        url: 1,
+        name: 1,
+        currentStatus: 1,
+        lastCheckedTime: 1,
+        latestResponseTime: 1
       }
-    }
+    },
+    { $sort: { url: 1 } }
   ]);
 
-  const result = dashboardAgg[0] || { summary: [], urls: [] };
-  const summary = result.summary[0] || {
-    totalUrls: 0,
-    upUrls: 0,
-    downUrls: 0
-  };
+  const urls = monitoredUrls.map((item) => ({
+    ...item,
+    currentStatus: normalizeStatusValue(item.currentStatus)
+  }));
+
+  const summary = urls.reduce(
+    (acc, item) => {
+      const status = normalizeStatusValue(item.currentStatus);
+      if (status === "up") {
+        acc.upUrls += 1;
+      } else {
+        acc.downUrls += 1;
+      }
+      return acc;
+    },
+    {
+      totalUrls: urls.length,
+      upUrls: 0,
+      downUrls: 0
+    }
+  );
+
+  const trendStart = new Date(Date.now() - DASHBOARD_TREND_HOURS * 60 * 60 * 1000);
+  const trendBuckets = await Check.aggregate([
+    { $match: { timestamp: { $gte: trendStart } } },
+    {
+      $group: {
+        _id: {
+          $dateToString: {
+            format: "%Y-%m-%dT%H:00:00.000Z",
+            date: "$timestamp"
+          }
+        },
+        totalChecks: { $sum: 1 },
+        upChecks: {
+          $sum: {
+            $cond: [{ $eq: [NORMALIZED_STATUS_EXPRESSION, "up"] }, 1, 0]
+          }
+        },
+        downChecks: {
+          $sum: {
+            $cond: [{ $eq: [NORMALIZED_STATUS_EXPRESSION, "down"] }, 1, 0]
+          }
+        },
+        averageResponseTime: { $avg: "$responseTime" }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ]);
+
+  const trendByHour = new Map(
+    trendBuckets.map((bucket) => [
+      bucket._id,
+      {
+        totalChecks: bucket.totalChecks,
+        upChecks: bucket.upChecks,
+        downChecks: bucket.downChecks,
+        averageResponseTime:
+          bucket.averageResponseTime === null
+            ? null
+            : Number(bucket.averageResponseTime.toFixed(2))
+      }
+    ])
+  );
+
+  const trend = [];
+  for (let offset = DASHBOARD_TREND_HOURS - 1; offset >= 0; offset -= 1) {
+    const hour = new Date(Date.now() - offset * 60 * 60 * 1000);
+    hour.setMinutes(0, 0, 0);
+    const bucketKey = hour.toISOString();
+    const bucket = trendByHour.get(bucketKey) || {
+      totalChecks: 0,
+      upChecks: 0,
+      downChecks: 0,
+      averageResponseTime: null
+    };
+
+    trend.push({
+      timestamp: bucketKey,
+      totalChecks: bucket.totalChecks,
+      upChecks: bucket.upChecks,
+      downChecks: bucket.downChecks,
+      uptimePercentage:
+        bucket.totalChecks > 0
+          ? Number(((bucket.upChecks / bucket.totalChecks) * 100).toFixed(2))
+          : 0,
+      averageResponseTime: bucket.averageResponseTime
+    });
+  }
+
+  const checksLast24h = trend.reduce(
+    (acc, bucket) => {
+      acc.totalChecks += bucket.totalChecks;
+      acc.upChecks += bucket.upChecks;
+      acc.downChecks += bucket.downChecks;
+
+      if (typeof bucket.averageResponseTime === "number") {
+        acc.responseTimeSum += bucket.averageResponseTime * bucket.totalChecks;
+      }
+      return acc;
+    },
+    {
+      totalChecks: 0,
+      upChecks: 0,
+      downChecks: 0,
+      responseTimeSum: 0
+    }
+  );
+
+  const averageResponseTime =
+    checksLast24h.totalChecks > 0
+      ? Number((checksLast24h.responseTimeSum / checksLast24h.totalChecks).toFixed(2))
+      : null;
+  const uptimePercentage =
+    checksLast24h.totalChecks > 0
+      ? Number(((checksLast24h.upChecks / checksLast24h.totalChecks) * 100).toFixed(2))
+      : 0;
 
   res.status(200).json({
     success: true,
@@ -161,7 +269,15 @@ const getDashboard = asyncHandler(async (_req, res) => {
       totalUrls: summary.totalUrls,
       upUrls: summary.upUrls,
       downUrls: summary.downUrls,
-      urls: result.urls
+      checksLast24h: {
+        totalChecks: checksLast24h.totalChecks,
+        upChecks: checksLast24h.upChecks,
+        downChecks: checksLast24h.downChecks,
+        averageResponseTime,
+        uptimePercentage
+      },
+      trend,
+      urls
     }
   });
 });

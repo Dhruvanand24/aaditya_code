@@ -7,13 +7,16 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <header class="container">
-      <h1>Uptime Monitor</h1>
-      <p>Minimal real-time URL health monitoring dashboard.</p>
+    <header class="container hero">
+      <div>
+        <h1>Uptime Monitor</h1>
+        <p>Real-time health, performance trends, and instant incident visibility.</p>
+      </div>
+      <button id="refresh-dashboard" class="secondary-btn">Refresh Dashboard</button>
     </header>
 
     <main class="container grid">
-      <section class="card">
+      <section class="card create-card">
         <h2>Add Monitor</h2>
         <form id="monitor-form">
           <label for="url">URL *</label>
@@ -28,14 +31,14 @@
           <label for="webhookUrl">Webhook URL</label>
           <input id="webhookUrl" name="webhookUrl" type="url" placeholder="http://localhost:4000/webhook" />
 
-          <button type="submit">Create Monitor</button>
+          <button type="submit" class="primary-btn">Create Monitor</button>
         </form>
       </section>
 
       <section class="card">
         <h2>Summary</h2>
         <div class="summary-grid">
-          <div class="metric">
+          <div class="metric glow-blue">
             <span>Total</span>
             <strong id="totalUrls">0</strong>
           </div>
@@ -48,13 +51,40 @@
             <strong id="downUrls">0</strong>
           </div>
         </div>
-        <button id="refresh-dashboard">Refresh Dashboard</button>
+        <div class="detail-metrics">
+          <div class="detail-metric">
+            <span>Checks (24h)</span>
+            <strong id="checks24h">0</strong>
+          </div>
+          <div class="detail-metric">
+            <span>Uptime (24h)</span>
+            <strong id="uptime24h">0%</strong>
+          </div>
+          <div class="detail-metric">
+            <span>Avg Response (24h)</span>
+            <strong id="avgResponse24h">-</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="card full">
+        <h2>Performance Trends (Last 24 Hours)</h2>
+        <div class="charts-grid">
+          <article class="chart-card">
+            <h3>Uptime % by Hour</h3>
+            <canvas id="uptime-chart" width="900" height="260"></canvas>
+          </article>
+          <article class="chart-card">
+            <h3>Response Time by Hour</h3>
+            <canvas id="latency-chart" width="900" height="260"></canvas>
+          </article>
+        </div>
       </section>
 
       <section class="card full">
         <div class="section-header">
           <h2>Monitors</h2>
-          <button id="refresh-monitors">Refresh Monitors</button>
+          <button id="refresh-monitors" class="secondary-btn">Refresh Monitors</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -65,6 +95,7 @@
                 <th>Interval</th>
                 <th>Status</th>
                 <th>Last Checked</th>
+                <th>Latest Response</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -75,6 +106,24 @@
 
       <section class="card full">
         <h2>Selected Monitor Status</h2>
+        <div class="selected-metrics">
+          <div class="detail-metric">
+            <span>Window</span>
+            <strong id="selected-window">-</strong>
+          </div>
+          <div class="detail-metric">
+            <span>Uptime</span>
+            <strong id="selected-uptime">-</strong>
+          </div>
+          <div class="detail-metric">
+            <span>Avg Response</span>
+            <strong id="selected-response">-</strong>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>Recent Response Time</h3>
+          <canvas id="selected-chart" width="900" height="260"></canvas>
+        </div>
         <pre id="status-output">Select "View Status" to load analytics.</pre>
       </section>
 
@@ -91,9 +140,10 @@
         <td class="interval"></td>
         <td class="status"></td>
         <td class="last-checked"></td>
+        <td class="last-response"></td>
         <td class="actions">
-          <button data-action="status">View Status</button>
-          <button data-action="interval">Set Interval</button>
+          <button data-action="status" class="secondary-btn">View Status</button>
+          <button data-action="interval" class="secondary-btn">Set Interval</button>
           <button data-action="delete" class="danger">Delete</button>
         </td>
       </tr>
