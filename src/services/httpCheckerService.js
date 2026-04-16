@@ -67,16 +67,18 @@ async function performCheck(urlDoc) {
   );
   const statusChanged = Boolean(previousCheck) && previousStatus !== status;
 
-  websocketService.broadcastCheckCompleted({
-    urlId: urlDoc._id.toString(),
-    url: urlDoc.url,
-    status,
-    responseTime,
-    timestamp,
-    statusChanged
-  });
+  if (status === "down") {
+    websocketService.broadcastCheckCompleted({
+      urlId: urlDoc._id.toString(),
+      url: urlDoc.url,
+      status,
+      responseTime,
+      timestamp,
+      statusChanged
+    });
+  }
 
-  if (statusChanged) {
+  if (statusChanged && status === "down") {
     websocketService.broadcastStatusChange({
       urlId: urlDoc._id.toString(),
       url: urlDoc.url,

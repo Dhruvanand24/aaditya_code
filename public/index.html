@@ -51,34 +51,6 @@
             <strong id="downUrls">0</strong>
           </div>
         </div>
-        <div class="detail-metrics">
-          <div class="detail-metric">
-            <span>Checks (24h)</span>
-            <strong id="checks24h">0</strong>
-          </div>
-          <div class="detail-metric">
-            <span>Uptime (24h)</span>
-            <strong id="uptime24h">0%</strong>
-          </div>
-          <div class="detail-metric">
-            <span>Avg Response (24h)</span>
-            <strong id="avgResponse24h">-</strong>
-          </div>
-        </div>
-      </section>
-
-      <section class="card full">
-        <h2>Performance Trends (Last 24 Hours)</h2>
-        <div class="charts-grid">
-          <article class="chart-card">
-            <h3>Uptime % by Hour</h3>
-            <canvas id="uptime-chart" width="900" height="260"></canvas>
-          </article>
-          <article class="chart-card">
-            <h3>Response Time by Hour</h3>
-            <canvas id="latency-chart" width="900" height="260"></canvas>
-          </article>
-        </div>
       </section>
 
       <section class="card full">
@@ -120,11 +92,13 @@
             <strong id="selected-response">-</strong>
           </div>
         </div>
-        <div class="chart-card">
+        <button id="toggle-selected-chart" class="secondary-btn selected-chart-toggle" type="button">
+          Show Recent Response Time Graph
+        </button>
+        <div id="selected-chart-card" class="chart-card is-hidden">
           <h3>Recent Response Time</h3>
           <canvas id="selected-chart" width="900" height="260"></canvas>
         </div>
-        <pre id="status-output">Select "View Status" to load analytics.</pre>
       </section>
 
       <section class="card full">

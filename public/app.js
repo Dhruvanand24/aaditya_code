@@ -8,22 +8,18 @@ const state = {
 const elements = {
   form: document.getElementById("monitor-form"),
   monitorsBody: document.getElementById("monitors-body"),
-  statusOutput: document.getElementById("status-output"),
   eventsList: document.getElementById("events-list"),
   refreshMonitors: document.getElementById("refresh-monitors"),
   refreshDashboard: document.getElementById("refresh-dashboard"),
   totalUrls: document.getElementById("totalUrls"),
   upUrls: document.getElementById("upUrls"),
   downUrls: document.getElementById("downUrls"),
-  checks24h: document.getElementById("checks24h"),
-  uptime24h: document.getElementById("uptime24h"),
-  avgResponse24h: document.getElementById("avgResponse24h"),
   selectedWindow: document.getElementById("selected-window"),
   selectedUptime: document.getElementById("selected-uptime"),
   selectedResponse: document.getElementById("selected-response"),
-  uptimeChart: document.getElementById("uptime-chart"),
-  latencyChart: document.getElementById("latency-chart"),
   selectedChart: document.getElementById("selected-chart"),
+  selectedChartCard: document.getElementById("selected-chart-card"),
+  toggleSelectedChart: document.getElementById("toggle-selected-chart"),
   template: document.getElementById("monitor-row-template")
 };
 
@@ -96,6 +92,17 @@ function normalizeStatus(rawStatus) {
   return "down";
 }
 
+function setSelectedChartVisibility(isVisible) {
+  if (!elements.selectedChartCard || !elements.toggleSelectedChart) {
+    return;
+  }
+
+  elements.selectedChartCard.classList.toggle("is-hidden", !isVisible);
+  elements.toggleSelectedChart.textContent = isVisible
+    ? "Hide Recent Response Time Graph"
+    : "Show Recent Response Time Graph";
+}
+
 async function request(path, options = {}) {
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json" },
@@ -120,30 +127,11 @@ async function loadDashboard() {
 }
 
 function renderSummary() {
-  const dashboard = state.dashboard || {
-    totalUrls: 0,
-    upUrls: 0,
-    downUrls: 0,
-    checksLast24h: {
-      totalChecks: 0,
-      uptimePercentage: 0,
-      averageResponseTime: null
-    }
-  };
+  const dashboard = state.dashboard || { totalUrls: 0, upUrls: 0, downUrls: 0 };
 
   animateNumber(elements.totalUrls, dashboard.totalUrls, 0);
   animateNumber(elements.upUrls, dashboard.upUrls, 0);
   animateNumber(elements.downUrls, dashboard.downUrls, 0);
-
-  const checks24h = dashboard.checksLast24h || {
-    totalChecks: 0,
-    uptimePercentage: 0,
-    averageResponseTime: null
-  };
-
-  animateNumber(elements.checks24h, checks24h.totalChecks, 0);
-  animateNumber(elements.uptime24h, checks24h.uptimePercentage, 1, "%");
-  elements.avgResponse24h.textContent = formatResponseTime(checks24h.averageResponseTime);
 }
 
 function drawLineChart(canvas, points, options) {
@@ -230,66 +218,6 @@ function drawLineChart(canvas, points, options) {
   }
 
   window.requestAnimationFrame(drawFrame);
-}
-
-function renderTrendCharts() {
-  const trend = (state.dashboard && state.dashboard.trend) || [];
-  if (!trend.length) {
-    drawLineChart(
-      elements.uptimeChart,
-      [{ value: 0, label: "Now" }],
-      {
-        lineColor: "#4fe09f",
-        minMax: { floor: 0, step: 1 },
-        maxLabel: (value) => `${Math.round(value)}%`,
-        minLabel: (value) => `${Math.round(value)}%`,
-        labelStep: 1
-      }
-    );
-    drawLineChart(
-      elements.latencyChart,
-      [{ value: 0, label: "Now" }],
-      {
-        lineColor: "#6ea4ff",
-        minMax: { floor: 0, step: 10 },
-        maxLabel: (value) => `${Math.round(value)}ms`,
-        minLabel: (value) => `${Math.round(value)}ms`,
-        labelStep: 1
-      }
-    );
-    return;
-  }
-
-  const uptimePoints = trend.map((bucket) => {
-    const date = new Date(bucket.timestamp);
-    return {
-      value: Number(bucket.uptimePercentage || 0),
-      label: date.toLocaleTimeString([], { hour: "2-digit" })
-    };
-  });
-  const latencyPoints = trend.map((bucket) => {
-    const date = new Date(bucket.timestamp);
-    return {
-      value: Number(bucket.averageResponseTime || 0),
-      label: date.toLocaleTimeString([], { hour: "2-digit" })
-    };
-  });
-
-  drawLineChart(elements.uptimeChart, uptimePoints, {
-    lineColor: "#4fe09f",
-    minMax: { floor: 0, step: 1 },
-    maxLabel: (value) => `${Math.round(value)}%`,
-    minLabel: (value) => `${Math.round(value)}%`,
-    labelStep: 4
-  });
-
-  drawLineChart(elements.latencyChart, latencyPoints, {
-    lineColor: "#6ea4ff",
-    minMax: { floor: 0, step: 10 },
-    maxLabel: (value) => `${Math.round(value)}ms`,
-    minLabel: (value) => `${Math.round(value)}ms`,
-    labelStep: 4
-  });
 }
 
 function renderSelectedStatus() {
@@ -398,7 +326,6 @@ async function refreshAll() {
   try {
     await Promise.all([loadMonitors(), loadDashboard()]);
     renderSummary();
-    renderTrendCharts();
     renderMonitorsTable();
     renderSelectedStatus();
   } finally {
@@ -451,7 +378,6 @@ async function viewStatus(urlId) {
     const response = await request(`/status/${urlId}`);
     state.selectedStatus = response.data;
     renderSelectedStatus();
-    elements.statusOutput.textContent = JSON.stringify(response.data, null, 2);
   } catch (error) {
     alert(error.message);
   }
@@ -578,16 +504,20 @@ function attachListeners() {
     try {
       await loadDashboard();
       renderSummary();
-      renderTrendCharts();
       renderMonitorsTable();
     } catch (error) {
       alert(error.message);
     }
   });
+  elements.toggleSelectedChart.addEventListener("click", () => {
+    const shouldShow = elements.selectedChartCard.classList.contains("is-hidden");
+    setSelectedChartVisibility(shouldShow);
+  });
 }
 
 async function bootstrap() {
   attachListeners();
+  setSelectedChartVisibility(false);
   connectWebSocket();
   window.setInterval(() => {
     safeRefreshAll().catch(() => {});
