@@ -7,7 +7,16 @@ const asyncHandler = require("../utils/asyncHandler");
 const FALLBACK_CHECK_WINDOW = 100;
 const DASHBOARD_TREND_HOURS = 24;
 const NORMALIZED_STATUS_EXPRESSION = {
-  $toLower: { $ifNull: [{ $toString: "$status" }, "down"] }
+  $toLower: {
+    $convert: {
+      input: {
+        $cond: [{ $isArray: "$status" }, { $arrayElemAt: ["$status", 0] }, "$status"]
+      },
+      to: "string",
+      onError: "down",
+      onNull: "down"
+    }
+  }
 };
 
 function normalizeStatusValue(rawStatus) {
@@ -125,7 +134,20 @@ const getDashboard = asyncHandler(async (_req, res) => {
       $addFields: {
         latestCheck: { $arrayElemAt: ["$latestCheck", 0] },
         currentStatus: {
-          $ifNull: [{ $toLower: "$latestCheck.status" }, "down"]
+          $toLower: {
+            $convert: {
+              input: {
+                $cond: [
+                  { $isArray: "$latestCheck.status" },
+                  { $arrayElemAt: ["$latestCheck.status", 0] },
+                  "$latestCheck.status"
+                ]
+              },
+              to: "string",
+              onError: "down",
+              onNull: "down"
+            }
+          }
         },
         lastCheckedTime: { $ifNull: ["$latestCheck.timestamp", null] },
         latestResponseTime: { $ifNull: ["$latestCheck.responseTime", null] }
