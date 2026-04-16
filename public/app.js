@@ -27,6 +27,28 @@ function statusClass(status) {
   return status === "up" ? "status-up" : "status-down";
 }
 
+function normalizeStatus(rawStatus) {
+  if (typeof rawStatus === "string") {
+    const normalized = rawStatus.toLowerCase();
+    return normalized === "up" || normalized === "down" ? normalized : "down";
+  }
+
+  if (Array.isArray(rawStatus) && rawStatus.length > 0) {
+    return normalizeStatus(rawStatus[0]);
+  }
+
+  if (rawStatus && typeof rawStatus === "object") {
+    if (typeof rawStatus.status === "string") {
+      return normalizeStatus(rawStatus.status);
+    }
+    if (typeof rawStatus.currentStatus === "string") {
+      return normalizeStatus(rawStatus.currentStatus);
+    }
+  }
+
+  return "down";
+}
+
 async function request(path, options = {}) {
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json" },
@@ -84,7 +106,9 @@ function renderMonitorsTable() {
     row.querySelector(".url").textContent = monitor.url;
     row.querySelector(".interval").textContent = `${monitor.checkInterval}s`;
 
-    const currentStatus = (dashboardMatch && dashboardMatch.currentStatus) || "down";
+    const currentStatus = normalizeStatus(
+      dashboardMatch && dashboardMatch.currentStatus
+    );
     const statusCell = row.querySelector(".status");
     statusCell.textContent = currentStatus.toUpperCase();
     statusCell.className = `status ${statusClass(currentStatus)}`;
@@ -242,7 +266,8 @@ function connectWebSocket() {
       const payload = JSON.parse(event.data);
       if (payload.event === "status-change") {
         const data = payload.data;
-        addEventLine(`${data.url} changed to ${data.newStatus.toUpperCase()}`);
+        const status = normalizeStatus(data.newStatus);
+        addEventLine(`${data.url} changed to ${status.toUpperCase()}`);
         await refreshAll();
       }
     } catch (_error) {
